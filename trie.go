@@ -1,4 +1,4 @@
-package go
+package goc
 
 import (
     "reflect"
