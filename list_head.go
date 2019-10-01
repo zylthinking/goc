@@ -1,4 +1,4 @@
-package rpc
+package go
 
 type ListHead struct {
     Next, Prev *ListHead;
