@@ -1,4 +1,4 @@
-package go
+package goc
 
 type ListHead struct {
     Next, Prev *ListHead;
