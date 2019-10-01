@@ -1,4 +1,4 @@
-package sysapi
+package go
 
 import (
     "sync/atomic"
