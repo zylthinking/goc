@@ -72,22 +72,22 @@ func LkfNodeNext(node *LkfNode) *LkfNode {
 }
 
 type PContext struct {
-    list LkfList;
+    List LkfList;
     stat int32;
 }
 
 func ProcInit(ctx *PContext) {
-    LkfInit(&ctx.list, ctx);
+    LkfInit(&ctx.List, ctx);
 }
 
 func ProcEnter(ctx *PContext, node *LkfNode) bool {
-    LkfNodePut(&ctx.list, node);
+    LkfNodePut(&ctx.List, node);
     return atomic.CompareAndSwapInt32(&ctx.stat, 0, 1);
 }
 
 func ProcLeave(ctx *PContext) bool {
     atomic.StoreInt32(&ctx.stat, 0);
-    if (ctx.list.tail == &ctx.list.root.next) {
+    if (ctx.List.tail == &ctx.List.root.next) {
         return true;
     }
     return !atomic.CompareAndSwapInt32(&ctx.stat, 0, 1);
