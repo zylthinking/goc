@@ -7,7 +7,7 @@ import (
 )
 
 type LkfNode struct {
-    next *LkfNode;
+    next unsafe.Pointer;
     Container interface{};
 }
 
@@ -17,7 +17,7 @@ func LknInit(node *LkfNode, container interface{}) {
 
 type LkfList struct  {
     root LkfNode ;
-    tail **LkfNode;
+    tail unsafe.Pointer;
 }
 
 func init() {
@@ -31,26 +31,24 @@ func LkfInit(list *LkfList, addr ...interface{}) {
     if (len(addr) != 0) {
         LknInit(&list.root, addr[0]);
     }
-    list.tail = &list.root.next;
+    list.tail = unsafe.Pointer(&list.root.next);
 }
 
 func LkfNodePut(list *LkfList, node *LkfNode) {
     node.next = nil;
-    tail := unsafe.Pointer(list.tail);
-    ptr := atomic.SwapPointer(&tail, unsafe.Pointer(&node.next));
-    *(**LkfNode)(ptr) = node;
+    ptr := atomic.SwapPointer(&list.tail, unsafe.Pointer(&node.next));
+    *(*unsafe.Pointer)(ptr) = unsafe.Pointer(node);
 }
 
 func LkfNodeGet(list *LkfList) *LkfNode {
-    next := unsafe.Pointer(list.root.next);
-    ptr := (*LkfNode)(atomic.SwapPointer(&next, nil));
+    first := atomic.SwapPointer(&list.root.next, nil);
+    ptr := (*LkfNode)(first);
     if (ptr == nil) {
         return nil;
     }
 
-    tail := unsafe.Pointer(list.tail);
-    last := atomic.SwapPointer(&tail, unsafe.Pointer(&list.root.next));
-    *(**LkfNode)(last) = ptr;
+    last := atomic.SwapPointer(&list.tail, unsafe.Pointer(&list.root.next));
+    *(*unsafe.Pointer)(last) = first;
 
     ptr = (*LkfNode)(unsafe.Pointer(uintptr(last) - lkf_node_offset));
     runtime.KeepAlive(last);
@@ -58,15 +56,14 @@ func LkfNodeGet(list *LkfList) *LkfNode {
 }
 
 func LkfNodeNext(node *LkfNode) *LkfNode {
-    ptr := node.next;
+    ptr := (*LkfNode)(node.next);
     if (ptr == nil || ptr.next == nil) {
         return nil;
     }
 
-    if (ptr == node) {
-        return ptr;
+    if (ptr != node) {
+        node.next = ptr.next;
     }
-    node.next = ptr.next;
     ptr.next = nil;
     return ptr;
 }
@@ -87,7 +84,8 @@ func ProcEnter(ctx *PContext, node *LkfNode) bool {
 
 func ProcLeave(ctx *PContext) bool {
     atomic.StoreInt32(&ctx.stat, 0);
-    if (ctx.List.tail == &ctx.List.root.next) {
+    tail := (*unsafe.Pointer)(atomic.LoadPointer(&ctx.List.tail));
+    if (tail == &ctx.List.root.next) {
         return true;
     }
     return !atomic.CompareAndSwapInt32(&ctx.stat, 0, 1);

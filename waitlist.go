@@ -57,10 +57,13 @@ func WaitOn(wl *WaitList, intp ...int32) (int32, bool) {
     }
 
     var wn wait_node;
-    if (wl.N != n) {
-        return wl.N, false;
-    }
-
+    //
+    // 以下代码被注释：
+    // if (wl.N != n) {
+    //     return wl.N, false;
+    // }
+    // 原因：必须通过 mutex 的内存屏障作用保证 WaitOn 返回后能观察到 Wakeup 之前的更改
+    //
     wl.mutx.Lock();
     if (wl.N != n) {
         goto LABEL;
@@ -87,7 +90,6 @@ func WaitOn(wl *WaitList, intp ...int32) (int32, bool) {
     wn.cond = sync.NewCond(&wl.mutx);
     ListAddTail(&wn.entry, &wl.head);
     wn.cond.Wait();
-
 LABEL:
     n = wl.N;
     wl.mutx.Unlock();
