@@ -11,6 +11,10 @@ type LkfNode struct {
     Container interface{};
 }
 
+func LknInit(node *LkfNode, container interface{}) {
+    node.Container = container;
+}
+
 type LkfList struct  {
     root LkfNode ;
     tail **LkfNode;
@@ -25,7 +29,7 @@ var lkf_node_offset uintptr = 0;
 func LkfInit(list *LkfList, addr ...interface{}) {
     list.root.next = nil;
     if (len(addr) != 0) {
-        list.root.Container = addr[0];
+        LknInit(&list.root, addr[0]);
     }
     list.tail = &list.root.next;
 }
