@@ -52,12 +52,11 @@ func (trie *Trie) Children() *ListHead {
     return &leaf.tree;
 }
 
-func (trie *Trie) leavesJoinParentOf(leaf *Trie, leaves *ListHead) {
-    parent := leaf.leaf;
+func (trie *Trie) leavesJoin(leaf *Trie, leaves *ListHead) {
     if (leaf == nil) {
-        parent = trie;
+        leaf = trie;
     }
-    ListJoin(leaves, &parent.tree);
+    ListJoin(leaves, &leaf.tree);
     ListDelInit(leaves);
 }
 
@@ -84,7 +83,7 @@ func (trie *Trie) Replace(key string, uptr interface{}) interface{} {
         cursor.Uptr = uptr;
 
         if (cursor.leaf != cursor) {
-            trie.leavesJoinParentOf(cursor, &cursor.treentry);
+            trie.leavesJoin(cursor.leaf, &cursor.treentry);
             cursor.leaf = cursor;
             cursor.leaf_adjust(cursor);
         }
@@ -135,7 +134,7 @@ func (trie *Trie) Del(key string) interface{} {
     uptr := found.Uptr;
     found.Uptr = nil;
     ListDelInit(&found.treentry);
-    trie.leavesJoinParentOf(found, &found.tree);
+    trie.leavesJoin(found.parent.leaf, &found.tree);
 
     var intp = QuickBytes(key);
     if (found.branch > 0) {
