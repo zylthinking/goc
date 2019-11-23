@@ -96,7 +96,8 @@ LABEL:
     return n, (wn.expired == 1);
 }
 
-func Wakeup(wl *WaitList, nr int32) {
+func Wakeup(wl *WaitList, nr int32) int32 {
+    var n int32;
     var head ListHead;
     InitListHead(&head);
     wl.mutx.Lock();
@@ -106,8 +107,9 @@ func Wakeup(wl *WaitList, nr int32) {
         // 这不是一个可能出现的情况
         // 但 nr == 0 做调用也本不可能出现
         wl.N++;
+        n = wl.N;
         wl.mutx.Unlock();
-        return;
+        return n;
     }
 
     if (nr < 0) {
@@ -126,6 +128,7 @@ func Wakeup(wl *WaitList, nr int32) {
 
     if (ListEmpty(&head) || nr > 0) {
         wl.N++;
+        n = wl.N;
     }
     wl.mutx.Unlock();
 
@@ -134,4 +137,5 @@ func Wakeup(wl *WaitList, nr int32) {
         wn := ListEntry(ent).(*wait_node);
         wn.wake(false);
     }
+    return n;
 }
