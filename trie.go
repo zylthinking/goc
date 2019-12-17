@@ -83,7 +83,11 @@ func (trie *Trie) Replace(key string, uptr interface{}) interface{} {
         cursor.Uptr = uptr;
 
         if (cursor.leaf != cursor) {
-            trie.leavesJoin(cursor.leaf, &cursor.treentry);
+            leaf := cursor.leaf;
+            if (leaf == nil) {
+                leaf = trie;
+            }
+            ListAdd(&cursor.treentry,  &leaf.tree);
             cursor.leaf = cursor;
             cursor.leaf_adjust(cursor);
         }
@@ -94,11 +98,18 @@ func (trie *Trie) Replace(key string, uptr interface{}) interface{} {
 func (trie *Trie) leaf_adjust(leaf *Trie) {
     for i := 0; i < 256; i++ {
         child := trie.child[i];
-        if (child == nil || child.leaf == child || child.leaf == leaf) {
+        if (child == nil) {
             continue;
         }
-        ListDel(&child.treentry);
-        ListAdd(&child.treentry, &leaf.tree);
+
+        if (child.leaf == child) {
+            if (leaf == nil) {
+                leaf = trie;
+            }
+            ListDel(&child.treentry);
+            ListAdd(&child.treentry, &leaf.tree);
+            continue;
+        }
         child.leaf = leaf;
         child.leaf_adjust(leaf);
     }
