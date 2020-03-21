@@ -126,7 +126,7 @@ func Wakeup(wl *WaitList, nr int32) int32 {
         nr--;
     }
 
-    if (ListEmpty(&head) || nr > 0) {
+    if (nr != 0) {
         wl.N++;
         n = wl.N;
     }
