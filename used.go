@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"sync"
 	"time"
+	_ "unsafe"
 )
 
 type trace_point struct {
@@ -16,9 +17,7 @@ type trace_point struct {
 type trace struct {
 	points []*trace_point
 }
-
 var traces sync.Map
-func Goid() uintptr
 
 func trace_get() *trace {
 	var zt *trace
@@ -26,7 +25,7 @@ func trace_get() *trace {
 	it, ok := traces.Load(gid)
 	if !ok {
 		zt = &trace{}
-        traces.Store(gid, zt)
+		traces.Store(gid, zt)
 	} else {
 		zt = it.(*trace)
 	}
@@ -74,13 +73,12 @@ func (this *trace) explain(start, end int, space string) {
 	}
 }
 
-func Show(msg string) {
+func Finish(pfx, msg string, print bool) {
 	zt := trace_get()
-	fmt.Println("ztrace\nztrace")
-	zt.explain(0, len(zt.points), "ztrace "+msg+": ")
-}
-
-func Reset() {
-	zt := trace_get()
+	if print {
+		fmt.Println(pfx + "\n" + pfx)
+		zt.explain(0, len(zt.points), pfx+" "+msg+": ")
+	}
 	zt.points = zt.points[0:0]
 }
+
