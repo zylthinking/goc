@@ -2,14 +2,20 @@ package goc
 
 import (
 	"sync"
-	"sync/atomic"
 	"time"
 )
 
 type wait_node struct {
 	entry   ListHead
+	mutx    sync.Mutex
 	cond    *sync.Cond
 	expired int32
+}
+
+func (wn *wait_node) wake(expired int32) {
+	ListDel(&wn.entry)
+	wn.expired = expired
+	wn.cond.Signal()
 }
 
 type WaitList struct {
@@ -58,12 +64,15 @@ func WaitOn(wl *WaitList, intp ...int32) (int32, bool) {
 
 	if expire > 0 {
 		time.AfterFunc(time.Millisecond*time.Duration(expire), func() {
-			if atomic.CompareAndSwapInt32(&wn.expired, 0, 1) {
-				wl.mutx.Lock()
-				ListDel(&wn.entry)
-				wl.mutx.Unlock()
-				wn.cond.Signal()
+			wn.mutx.Lock()
+			defer wn.mutx.Unlock()
+			if wn.expired != 0 {
+				return
 			}
+
+			wl.mutx.Lock()
+			wn.wake(1)
+			wl.mutx.Unlock()
 		})
 	}
 
@@ -113,11 +122,11 @@ LABEL:
 	for !ListEmpty(&head) {
 		ent := head.Next
 		wn := ListEntry(ent).(*wait_node)
-
-		if atomic.CompareAndSwapInt32(&wn.expired, 0, 2) {
-			ListDel(&wn.entry)
-			wn.cond.Signal()
+		wn.mutx.Lock()
+		if wn.expired == 0 {
+			wn.wake(2)
 		}
+		wn.mutx.Unlock()
 	}
 	return n
 }
