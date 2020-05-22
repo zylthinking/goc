@@ -12,20 +12,15 @@ type wait_node struct {
 	expired int32
 }
 
-func (wn *wait_node) wake(expired bool) {
+func (wn *wait_node) wake(expired int32) {
 	wn.mutx.Lock()
-	if expired && wn.expired != 0 || !expired && wn.expired == 1 {
+	if wn.expired != 0 {
 		wn.mutx.Unlock()
 		return
 	}
 
-	if wn.expired == 0 {
-		wn.expired = 2
-		if expired {
-			wn.expired = 1
-		}
-	}
 	ListDel(&wn.entry)
+	wn.expired = expired
 	wn.mutx.Unlock()
 	wn.cond.Signal()
 }
@@ -48,12 +43,12 @@ func NeWaitList() *WaitList {
 
 func WaitOn(wl *WaitList, intp ...int32) (int32, bool) {
 	var expire, n int32 = -1, wl.N
-	nr := len(intp)
-	if nr > 0 {
+	switch len(intp) {
+	case 2:
+		expire = intp[1]
+		fallthrough
+	case 1:
 		n = intp[0]
-		if nr > 1 {
-			expire = intp[1]
-		}
 	}
 
 	var wn wait_node
@@ -81,7 +76,7 @@ func WaitOn(wl *WaitList, intp ...int32) (int32, bool) {
 			}
 
 			wl.mutx.Lock()
-			wn.wake(true)
+			wn.wake(1)
 			wl.mutx.Unlock()
 		})
 	}
@@ -119,8 +114,6 @@ func Wakeup(wl *WaitList, nr int32) int32 {
 		ent := wl.head.Next
 		ListDel(ent)
 		ListAdd(ent, &head)
-		wn := ListEntry(ent).(*wait_node)
-		wn.expired = 2
 		nr--
 	}
 
@@ -134,7 +127,7 @@ LABEL:
 	for !ListEmpty(&head) {
 		ent := head.Next
 		wn := ListEntry(ent).(*wait_node)
-		wn.wake(false)
+		wn.wake(2)
 	}
 	return n
 }
