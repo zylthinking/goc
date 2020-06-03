@@ -29,7 +29,7 @@ func standardization(raw []*candidate) ([]*candidate, int) {
 	for i := 0; i < nr; i++ {
 		sum += uint64(raw[i].weight)
 	}
-	
+
 	var std []*candidate
 	n := uint32(0)
 	for i := 0; i < nr; i++ {
@@ -51,7 +51,7 @@ func (this *CandPool) AddCand(weight uint32, any unsafe.Pointer) {
 	if weight == 0 {
 		weight = 1
 	}
-	
+
 	this.Lock()
 	this.raw = append(this.raw, &candidate{
 		weight: weight,
