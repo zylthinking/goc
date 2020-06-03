@@ -19,7 +19,7 @@ type CandPool struct {
 	items  []unsafe.Pointer
 }
 
-func (this *CandPool) standardization(raw []*candidate) ([]*candidate, int) {
+func standardization(raw []*candidate) ([]*candidate, int) {
 	nr := len(raw)
 	if nr == 0 {
 		return nil, 0
@@ -79,7 +79,7 @@ func (this *CandPool) Shuffle() {
 	raw := this.raw
 	this.Unlock()
 
-	std, sum := this.standardization(raw)
+	std, sum := standardization(raw)
 	this.Lock()
 	defer this.Unlock()
 
