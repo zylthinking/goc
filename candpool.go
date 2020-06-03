@@ -122,7 +122,7 @@ func (this *CandPool) Pick() unsafe.Pointer {
 	this.nr--
 
 	if this.nr == 0 {
-		this.fg, this.nr = this.bg, nr
+		this.fg, this.bg, this.nr = this.bg, this.fg, nr
 	} else {
 		this.fg[idx] = this.fg[this.nr]
 	}
