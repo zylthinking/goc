@@ -97,9 +97,8 @@ func (this *LeaderCall) EnterCallGate(expire int32, handler funcPtr) (interface{
 
 	err := ptr.err
 	it := ptr.result
-	if it == nil {
-		fmt.Printf("%p %p\n", ptr, this.value)
-		panic(fmt.Sprintf("Bug detected %v", ptr == &val))
+	if it == nil && err == nil {
+		panic(fmt.Sprintf("Bug detected %v, %v, %p %p %p", *ptr, ptr == &val, ptr, this.value, resultPtr))
 	}
 	return it, err, expired
 }
