@@ -22,8 +22,6 @@ TEXT ·getg_it(SB), NOSPLIT, $32-16
     MOVQ $0, ret_data+8(FP)
     GO_RESULTS_INITIALIZED
 
-    CALL runtime·Goid(SB)
-
     MOVQ (TLS), AX
     MOVQ $type·runtime·g(SB), BX
 
