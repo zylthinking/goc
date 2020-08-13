@@ -37,9 +37,10 @@ type LeaderCall struct {
 	wl    *WaitList
 	value *result
 }
-
 type funcPtr = func() (interface{}, error)
+
 var bug = errors.New("bugs in lcHandler")
+var timout = errors.New("time out")
 
 func (this *LeaderCall) realCall(handler funcPtr) {
 	//this.value.mux.Lock()
@@ -56,7 +57,7 @@ func (this *LeaderCall) realCall(handler funcPtr) {
 	Wakeup(this.wl, -1)
 }
 
-func (this *LeaderCall) EnterCallGate(expire int32, handler funcPtr) (interface{}, error, bool) {
+func (this *LeaderCall) EnterCallGate(expire int32, handler funcPtr) (interface{}, error) {
 	var val result
 	var ptr *result
 
@@ -98,9 +99,13 @@ func (this *LeaderCall) EnterCallGate(expire int32, handler funcPtr) (interface{
 	err := ptr.err
 	it := ptr.result
 	if it == nil && err == nil {
-		panic(fmt.Sprintf("Bug detected %v, %v, %p %p %p", *ptr, ptr == &val, ptr, this.value, resultPtr))
+		if expired {
+			err = timout
+		} else {
+			panic(fmt.Sprintf("Bug detected %v, %v, %p %p %p", *ptr, ptr == &val, ptr, this.value, resultPtr))
+		}
 	}
-	return it, err, expired
+	return it, err
 }
 
 func NewLeadCall() *LeaderCall {
