@@ -11,6 +11,7 @@ import (
 type result struct {
 	// mux 及相关被注释掉的代码并不是废弃的
 	// 而是看上去 golang atomic 系列函数具有全屏障语义
+	// 相关讨论: https://github.com/golang/go/issues/5045
 	// 因此导致 mux 实际上可以被忽略
 	//
 	// 这里的问题是以下代码
