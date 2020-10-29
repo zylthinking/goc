@@ -11,7 +11,6 @@ import (
 type result struct {
 	// mux 及相关被注释掉的代码并不是废弃的
 	// 而是看上去 golang atomic 系列函数具有全屏障语义
-	// 相关讨论: https://github.com/golang/go/issues/5045
 	// 因此导致 mux 实际上可以被忽略
 	//
 	// 这里的问题是以下代码
@@ -34,9 +33,10 @@ type result struct {
 }
 
 type LeaderCall struct {
-	mux   sync.Mutex
-	wl    *WaitList
-	value *result
+	mux    sync.Mutex
+	wl     *WaitList
+	value  *result
+	result *result
 }
 type funcPtr = func() (interface{}, error)
 
@@ -50,6 +50,7 @@ func (this *LeaderCall) realCall(handler funcPtr) {
 		this.value.err = bug
 	}
 	//this.value.mux.Unlock()
+	this.result = this.value
 
 	rawptr := unsafe.Pointer(&this.value)
 	this.mux.Lock()
@@ -97,13 +98,16 @@ func (this *LeaderCall) EnterCallGate(expire int32, handler funcPtr) (interface{
 		expired = false
 	}
 
+	ptr = this.result
 	err := ptr.err
 	it := ptr.result
 	if it == nil && err == nil {
 		if expired {
 			err = timout
 		} else {
-			panic(fmt.Sprintf("Bug detected %v, %v, %p %p %p", *ptr, ptr == &val, ptr, this.value, resultPtr))
+			panic(fmt.Sprintf(
+				"Bug detected %v, %p %p %p",
+				ptr == &val, ptr, this.value, resultPtr))
 		}
 	}
 	return it, err
