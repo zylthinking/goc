@@ -12,6 +12,7 @@ type result struct {
 	// mux 及相关被注释掉的代码并不是废弃的
 	// 而是看上去 golang atomic 系列函数具有全屏障语义
 	// 因此导致 mux 实际上可以被忽略
+	// 相关讨论: https://github.com/golang/go/issues/5045
 	//
 	// 这里的问题是以下代码
 	//   this.value.result, this.value.err = handler()
@@ -50,6 +51,17 @@ func (this *LeaderCall) realCall(handler funcPtr) {
 		this.value.err = bug
 	}
 	//this.value.mux.Unlock()
+
+	// 下面
+	// atomic.StorePointer((*unsafe.Pointer)(rawptr), nil)
+	// 执行后, 可能立即一个 EnterCallGate 进入
+	// 观察到 this.value == nil
+	// 而后对其进行赋值 this.value = &val
+	// 这里将原值保存到 this.result 中
+	// 因为指针赋值是原子的,
+	// 因此随后读 this.result, 总是能读到一个有效
+	// 结果， 就算有并发的 this.result = this.value
+	// 也不过是读到新值而已
 	this.result = this.value
 
 	rawptr := unsafe.Pointer(&this.value)
@@ -82,8 +94,9 @@ func (this *LeaderCall) EnterCallGate(expire int32, handler funcPtr) (interface{
 
 	rawptr := unsafe.Pointer(&this.value)
 	resultPtr := (*result)(atomic.LoadPointer((*unsafe.Pointer)(rawptr)))
+	var N2 = N
 	if ptr == resultPtr {
-		_, expired = WaitOn(this.wl, N, expire)
+		N2, expired = WaitOn(this.wl, N, expire)
 		// WaitOn 中存在内存屏障可保证
 		// 至少 this.value = nil 能被观察到
 		// 同时顺带保证了 this.value.result/err 被观察到
@@ -94,20 +107,24 @@ func (this *LeaderCall) EnterCallGate(expire int32, handler funcPtr) (interface{
 		//defer ptr.mux.Unlock()
 	}
 
+	var err error
+	var it interface{}
 	if ptr != resultPtr {
 		expired = false
+	} else {
+		ptr = this.result
+		if ptr != nil {
+			err = ptr.err
+			it = ptr.result
+		}
 	}
 
-	ptr = this.result
-	err := ptr.err
-	it := ptr.result
 	if it == nil && err == nil {
 		if expired {
 			err = timout
 		} else {
-			panic(fmt.Sprintf(
-				"Bug detected %v, %p %p %p",
-				ptr == &val, ptr, this.value, resultPtr))
+			panic(fmt.Sprintf("Bug detected %d:%d %v, %p %p %p",
+				N, N2, ptr == &val, ptr, this.value, resultPtr))
 		}
 	}
 	return it, err
