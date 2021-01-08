@@ -9,6 +9,8 @@ TEXT ·goid(SB), NOSPLIT, $0-8
     MOVQ (AX)(BX*1), AX
     MOVQ AX, ret(FP)
     RET
+#else
+#define MOVQ MOVL
 #endif
 
 TEXT ·getg(SB), NOSPLIT, $0-8
