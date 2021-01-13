@@ -1,7 +1,6 @@
 package goc
 
 import (
-	"runtime"
 	"sync"
 	"sync/atomic"
 	"unsafe"
@@ -11,34 +10,26 @@ type cond struct {
 	uptr unsafe.Pointer
 	mux  sync.Mutex
 	cond *sync.Cond
-	nr   [2]int64
 }
 
 func newCond() *cond {
 	cond := &cond{}
-	cond.cond = sync.NewCond(cond)
+	cond.cond = sync.NewCond(&cond.mux)
 	return cond
 }
 
-func (this *cond) Lock() {
+func (this *cond) wait() {
 	this.mux.Lock()
-}
-
-func (this *cond) Unlock() {
-	this.nr[1]--
+	for this.uptr == nil {
+		this.cond.Wait()
+	}
 	this.mux.Unlock()
 }
 
-func (this *cond) wait(nr int64) {
-	this.Lock()
-	this.nr[0] += nr
-	this.nr[1]++
-	this.cond.Wait()
-	this.Unlock()
-}
-
 func (this *cond) wake(uptr unsafe.Pointer) {
+	this.mux.Lock()
 	this.uptr = uptr
+	this.mux.Unlock()
 	this.cond.Broadcast()
 }
 
@@ -61,15 +52,11 @@ func (this *LeadLock) Lock(nr int64) unsafe.Pointer {
 	ptr := (*unsafe.Pointer)(unsafe.Pointer(&this.cond))
 	if n > 1 {
 		cond := (*cond)(atomic.LoadPointer(ptr))
-		cond.wait(nr)
+		cond.wait()
 		uptr = unsafe.Pointer(&cond.uptr)
 	} else {
 		this.mux.Lock()
 		this.holder = (*cond)(atomic.SwapPointer(ptr, unsafe.Pointer(newCond())))
-		nr = atomic.SwapInt64(&this.nr, 0) - nr
-		for this.holder.nr[0] != nr || this.holder.nr[1] != 0 {
-			runtime.Gosched()
-		}
 	}
 	return uptr
 }
