@@ -46,28 +46,28 @@ func NewLeadLock() *LeadLock {
 	return leadlock
 }
 
-func (this *LeadLock) Lock(nr int64) unsafe.Pointer {
+func (this *LeadLock) Lock() unsafe.Pointer {
 	var uptr unsafe.Pointer
-	n := atomic.AddInt64(&this.nr, nr)
+	n := atomic.AddInt64(&this.nr, 1)
 	ptr := (*unsafe.Pointer)(unsafe.Pointer(&this.cond))
 	if n > 1 {
 		cond := (*cond)(atomic.LoadPointer(ptr))
 		cond.wait()
-		uptr = unsafe.Pointer(&cond.uptr)
+		uptr = cond.uptr
 	} else {
 		this.mux.Lock()
+		atomic.StoreInt64(&this.nr, 0)
 		this.holder = (*cond)(atomic.SwapPointer(ptr, unsafe.Pointer(newCond())))
 	}
 	return uptr
 }
 
 func (this *LeadLock) Unlock(uptr unsafe.Pointer) {
-	holder := this.holder
-	if uptr == nil || holder == nil {
+	ptr := unsafe.Pointer(&this.holder)
+	holder := atomic.SwapPointer((*unsafe.Pointer)(ptr), unsafe.Pointer(nil))
+	if holder == nil {
 		return
 	}
-
-	this.holder = nil
-	holder.wake(uptr)
+	(*cond)(holder).wake(uptr)
 	this.mux.Unlock()
 }
