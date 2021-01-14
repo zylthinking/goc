@@ -9,31 +9,66 @@ TEXT ·goid(SB), NOSPLIT, $0-8
     MOVQ (AX)(BX*1), AX
     MOVQ AX, ret(FP)
     RET
-#else
-#define MOVQ MOVL
-#endif
+#define ONE 8
+#define TWO 16
+#define THREE 24
+#define FOUR 32
 
-TEXT ·getg(SB), NOSPLIT, $0-8
+TEXT ·getg(SB), NOSPLIT, $0-ONE
     MOVQ (TLS), AX
     MOVQ AX, ret(FP)
     RET
 
-TEXT ·getg_it(SB), NOSPLIT, $32-16
+TEXT ·getg_it(SB), NOSPLIT, $FOUR-TWO
     NO_LOCAL_POINTERS
     MOVQ $0, ret_type+0(FP)
-    MOVQ $0, ret_data+8(FP)
+    MOVQ $0, ret_data+ONE(FP)
     GO_RESULTS_INITIALIZED
 
     MOVQ (TLS), AX
     MOVQ $type·runtime·g(SB), BX
 
-    MOVQ AX, 8(SP)
+    MOVQ AX, ONE(SP)
     MOVQ BX, 0(SP)
     CALL runtime·convT2E(SB)
 
-    MOVQ 16(SP), AX
-    MOVQ 24(SP), BX
+    MOVQ TWO(SP), AX
+    MOVQ THREE(SP), BX
 
     MOVQ AX, ret+0(FP)
-    MOVQ BX, ret+8(FP)
+    MOVQ BX, ret+ONE(FP)
     RET
+#endif
+
+#ifdef GOARCH_386
+#define MOVQ MOVL
+#define ONE 4
+#define TWO 8
+#define THREE 12
+#define FOUR 16
+
+TEXT ·getg(SB), NOSPLIT, $0-ONE
+    MOVQ (TLS), AX
+    MOVQ AX, ret(FP)
+    RET
+
+TEXT ·getg_it(SB), NOSPLIT, $FOUR-TWO
+    NO_LOCAL_POINTERS
+    MOVQ $0, ret_type+0(FP)
+    MOVQ $0, ret_data+ONE(FP)
+    GO_RESULTS_INITIALIZED
+
+    MOVQ (TLS), AX
+    MOVQ $type·runtime·g(SB), BX
+
+    MOVQ AX, ONE(SP)
+    MOVQ BX, 0(SP)
+    CALL runtime·convT2E(SB)
+
+    MOVQ TWO(SP), AX
+    MOVQ THREE(SP), BX
+
+    MOVQ AX, ret+0(FP)
+    MOVQ BX, ret+ONE(FP)
+    RET
+#endif
