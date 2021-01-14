@@ -30,8 +30,8 @@ func NewSeqLock() *SeqLock {
 
 func (this *SeqLock) Lock() {
 	var node seq_node
+	LkfNodePut(&this.wl, &node.LkfNode)	
 	n := atomic.AddInt64(&this.nr, 1)
-	LkfNodePut(&this.wl, &node.LkfNode)
 	if n > 1 {
 		node.mux.Lock()
 		node.mux.Lock()
