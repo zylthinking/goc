@@ -2,24 +2,37 @@ package goc
 
 import (
 	"reflect"
+	"runtime"
+	"sync"
 	"unsafe"
 )
 
-//go:linkname __a runtime.convT2E
-func __a()
 func getg() unsafe.Pointer
 func getg_it() interface{}
 
-var g_goid_offset uintptr = func() uintptr {
-	it := getg_it()
-	if f, ok := reflect.TypeOf(it).FieldByName("goid"); ok {
-		return f.Offset
-	}
-	panic("can not find g.goid field")
-}()
+func goidImpl() func() int64 {
+	var once sync.Once
+	var offset int64 = -1
+	var fn func() int64
+	once.Do(func() {
+		if runtime.GOARCH == "386" || runtime.GOARCH == "amd64" {
+			it := getg_it()
+			if f, ok := reflect.TypeOf(it).FieldByName("goid"); ok {
+				offset = int64(f.Offset)
+			}
+		}
+
+		fn = func() int64 {
+			if offset == -1 {
+				return -1
+			}
+			return *(*int64)(unsafe.Pointer(uintptr(getg()) + uintptr(offset)))
+		}
+	})
+	return fn
+}
 
 func Goid() int64 {
-	g := getg()
-	p := (*int64)(unsafe.Pointer(uintptr(g) + g_goid_offset))
-	return *p
+	fn := goidImpl()
+	return fn()
 }
