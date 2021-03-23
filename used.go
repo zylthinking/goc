@@ -17,23 +17,36 @@ type trace_point struct {
 type trace struct {
 	points []*trace_point
 }
+
 var traces sync.Map
 
-func trace_get() *trace {
+func trace_get(gen bool) *trace {
 	var zt *trace
 	gid := Goid()
+	if gid == -1 {
+		return nil
+	}
+
 	it, ok := traces.Load(gid)
 	if !ok {
-		zt = &trace{}
-		traces.Store(gid, zt)
+		if gen {
+			zt = &trace{}
+			traces.Store(gid, zt)
+		}
 	} else {
 		zt = it.(*trace)
 	}
 	return zt
 }
 
-func Mark(msg string) func(...string) int64 {
-	zt := trace_get()
+func Mark(msg string, gen ...bool) func(...string) int64 {
+	zt := trace_get(len(gen) > 0)
+	if zt == nil {
+		return func(...string) int64 {
+			return -1
+		}
+	}
+
 	pt1 := &trace_point{
 		msg: msg,
 		idx: len(zt.points),
@@ -74,11 +87,14 @@ func (this *trace) explain(start, end int, space string) {
 }
 
 func Finish(pfx, msg string, print bool) {
-	zt := trace_get()
+	zt := trace_get(false)
+	if zt == nil {
+		return
+	}
+
 	if print {
 		fmt.Println(pfx + "\n" + pfx)
 		zt.explain(0, len(zt.points), pfx+" "+msg+": ")
 	}
 	zt.points = zt.points[0:0]
 }
-
