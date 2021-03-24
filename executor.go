@@ -1,4 +1,4 @@
-package goc
+package subscriber
 
 import (
 	"context"
@@ -9,22 +9,22 @@ import (
 type execUnit struct {
 	ctx    context.Context
 	cancel context.CancelFunc
-	uptr   unsafe.Pointer
+	uptr   []unsafe.Pointer
 }
 
 type BgExecutor struct {
 	sync.Mutex
-	fn    func(context.Context, unsafe.Pointer)
+	fn    func(context.Context, ...unsafe.Pointer)
 	units [2]*execUnit
 }
 
-func NewBgExecutor(fn func(context.Context, unsafe.Pointer)) *BgExecutor {
+func NewBgExecutor(fn func(context.Context, ...unsafe.Pointer)) *BgExecutor {
 	return &BgExecutor{
 		fn: fn,
 	}
 }
 
-func (this *BgExecutor) Exec(ctx context.Context, uptr unsafe.Pointer) context.CancelFunc {
+func (this *BgExecutor) Exec(ctx context.Context, uptr ...unsafe.Pointer) context.CancelFunc {
 	var unit = &execUnit{
 		uptr: uptr,
 	}
@@ -51,9 +51,9 @@ func (this *BgExecutor) Exec(ctx context.Context, uptr unsafe.Pointer) context.C
 	return cancel
 }
 
-func (this *BgExecutor) main(ctx context.Context, uptr unsafe.Pointer) {
+func (this *BgExecutor) main(ctx context.Context, uptr []unsafe.Pointer) {
 	for ctx != nil {
-		this.fn(ctx, uptr)
+		this.fn(ctx, uptr...)
 
 		this.Lock()
 		this.units[0], this.units[1] = this.units[1], nil
