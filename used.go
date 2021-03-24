@@ -1,10 +1,11 @@
 package goc
 
 import (
-	"fmt"
 	"sync"
 	"time"
 	_ "unsafe"
+
+	logger "git-biz.qianxin-inc.cn/infra-components/sdk/microservice-framework/go-framework.git/log"
 )
 
 type trace_point struct {
@@ -37,6 +38,14 @@ func trace_get(gen bool) *trace {
 		zt = it.(*trace)
 	}
 	return zt
+}
+
+func trace_put() {
+	gid := Goid()
+	if gid == -1 {
+		return
+	}
+	traces.Delete(gid)
 }
 
 func Mark(msg string, gen ...bool) func(...string) int64 {
@@ -74,11 +83,11 @@ func (this *trace) explain(start, end int, space string) {
 	for i := start; i < end; i++ {
 		pt := this.points[i]
 		if pt.end == nil {
-			fmt.Println(space, pt.msg, pt.tms, "-->")
+			logger.Info(space, pt.msg, pt.tms, "-->")
 			continue
 		}
 
-		fmt.Println(space, pt.msg, pt.tms, "-->", pt.end.tms, "used", pt.end.tms-pt.tms)
+		logger.Info(space, pt.msg, pt.tms, "-->", pt.end.tms, "used", pt.end.tms-pt.tms)
 		if pt.end.idx > i+1 {
 			this.explain(i+1, pt.end.idx, space+"    ")
 		}
@@ -93,8 +102,9 @@ func Finish(pfx, msg string, print bool) {
 	}
 
 	if print {
-		fmt.Println(pfx + "\n" + pfx)
+		logger.Info(pfx + "\n" + pfx)
 		zt.explain(0, len(zt.points), pfx+" "+msg+": ")
 	}
 	zt.points = zt.points[0:0]
+	trace_put()
 }
