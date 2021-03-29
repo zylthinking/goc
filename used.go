@@ -1,7 +1,9 @@
 package goc
 
 import (
+	"strconv"
 	"sync"
+	"sync/atomic"
 	"time"
 	_ "unsafe"
 
@@ -20,6 +22,7 @@ type trace struct {
 }
 
 var traces sync.Map
+var seq int64
 
 func trace_get(gen bool) *trace {
 	var zt *trace
@@ -102,8 +105,9 @@ func Finish(pfx, msg string, print bool) {
 	}
 
 	if print {
+		strN := strconv.FormatInt(atomic.AddInt64(&seq, 1), 10)
 		logger.Info(pfx + "\n" + pfx)
-		zt.explain(0, len(zt.points), pfx+" "+msg+": ")
+		zt.explain(0, len(zt.points), pfx+" "+msg+"-"+strN+": ")
 	}
 	zt.points = zt.points[0:0]
 	trace_put()
