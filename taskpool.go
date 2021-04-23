@@ -38,6 +38,8 @@ func (this *TaskPool) main() {
 func (this *TaskPool) execute(fptr *func()) {
 	for {
 		(*fptr)()
+		fptr = nil
+		
 		n := atomic.AddInt32(&this.idle, 1)
 		if n > this.keep {
 			atomic.AddInt32(&this.idle, -1)
@@ -45,7 +47,6 @@ func (this *TaskPool) execute(fptr *func()) {
 			return
 		}
 
-		fptr = nil
 		select {
 		case fptr = <-this.in:
 		default:
