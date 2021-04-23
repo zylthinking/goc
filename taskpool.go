@@ -20,7 +20,7 @@ func NewTaskPool(keep int32) *TaskPool {
 
 	pool := &TaskPool{
 		in:   make(chan *func()),
-		busy: make(chan *func(), 8),
+		busy: make(chan *func(), 64),
 		keep: keep,
 	}
 	go pool.main()
