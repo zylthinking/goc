@@ -1,5 +1,10 @@
 package goc
 
+import (
+	"sync/atomic"
+	"time"
+)
+
 type TaskPool struct {
 	in    chan *func()
 	busy  chan *func()
@@ -39,8 +44,24 @@ func (this *TaskPool) execute(fptr *func()) {
 			atomic.AddInt32(&this.total, -1)
 			return
 		}
-		fptr = <-this.in
+
+		fptr = nil
+		select {
+		case fptr = <-this.in:
+		default:
+			timer := time.NewTimer(time.Second * 30)
+			select {
+			case fptr = <-this.in:
+			case <-timer.C:
+			}
+			timer.Stop()
+		}
+
 		atomic.AddInt32(&this.idle, -1)
+		if fptr == nil {
+			atomic.AddInt32(&this.total, -1)
+			return
+		}
 	}
 }
 
@@ -49,7 +70,7 @@ func (this *TaskPool) SubmitTask(fptr *func()) {
 	case this.in <- fptr:
 		return
 	default:
-		if this.total > 4096 {
+		if this.total > 10240 {
 			this.in <- fptr
 			return
 		}
