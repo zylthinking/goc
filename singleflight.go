@@ -1,4 +1,4 @@
-package singleflight
+package goc
 
 import (
 	"runtime"
