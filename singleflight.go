@@ -13,7 +13,7 @@ type SingleFlight struct {
 func (this *SingleFlight) leadLock(key string) *LeadLock {
 	iface, ok := this.Load(key)
 	if !ok {
-		iface, _ = this.LoadOrStore(key, lock.NewLeadLock())
+		iface, _ = this.LoadOrStore(key, NewLeadLock())
 	}
 	return iface.(*LeadLock)
 }
