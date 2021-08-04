@@ -1,4 +1,4 @@
-package subscriber
+package goc
 
 import (
 	"context"
@@ -16,11 +16,18 @@ type BgExecutor struct {
 	sync.Mutex
 	fn    func(context.Context, ...unsafe.Pointer)
 	units [2]*execUnit
+	mux   *sync.Mutex
 }
 
-func NewBgExecutor(fn func(context.Context, ...unsafe.Pointer)) *BgExecutor {
+func NewBgExecutor(fn func(context.Context, ...unsafe.Pointer), mutx ...*sync.Mutex) *BgExecutor {
+	var mux *sync.Mutex
+	if len(mutx) > 0 {
+		mux = mutx[0]
+	}
+
 	return &BgExecutor{
-		fn: fn,
+		fn:  fn,
+		mux: mux,
 	}
 }
 
@@ -43,7 +50,7 @@ func (this *BgExecutor) Exec(ctx context.Context, uptr ...unsafe.Pointer) contex
 	this.Lock()
 	if this.units[0] == nil {
 		this.units[0] = unit
-		go this.main(unit.ctx, uptr)
+		go this.main(unit.ctx, uptr, cancel)
 	} else {
 		this.units[1] = unit
 	}
@@ -51,15 +58,22 @@ func (this *BgExecutor) Exec(ctx context.Context, uptr ...unsafe.Pointer) contex
 	return cancel
 }
 
-func (this *BgExecutor) main(ctx context.Context, uptr []unsafe.Pointer) {
+func (this *BgExecutor) main(ctx context.Context, uptr []unsafe.Pointer, cancel context.CancelFunc) {
+	if this.mux != nil {
+		this.mux.Lock()
+		defer this.mux.Unlock()
+	}
+
 	for ctx != nil {
 		this.fn(ctx, uptr...)
+		cancel()
 
 		this.Lock()
 		this.units[0], this.units[1] = this.units[1], nil
 		if this.units[0] != nil {
 			ctx = this.units[0].ctx
 			uptr = this.units[0].uptr
+			cancel = this.units[0].cancel
 		} else {
 			ctx = nil
 		}
