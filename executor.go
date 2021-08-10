@@ -16,11 +16,11 @@ type BgExecutor struct {
 	sync.Mutex
 	fn    func(context.Context, ...unsafe.Pointer)
 	units [2]*execUnit
-	mux   *sync.Mutex
+	mux   sync.Locker
 }
 
-func NewBgExecutor(fn func(context.Context, ...unsafe.Pointer), mutx ...*sync.Mutex) *BgExecutor {
-	var mux *sync.Mutex
+func NewBgExecutor(fn func(context.Context, ...unsafe.Pointer), mutx ...sync.Locker) *BgExecutor {
+	var mux sync.Locker
 	if len(mutx) > 0 {
 		mux = mutx[0]
 	}
