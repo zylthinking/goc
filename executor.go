@@ -3,6 +3,7 @@ package goc
 import (
 	"context"
 	"sync"
+	"sync/atomic"
 	"unsafe"
 )
 
@@ -31,14 +32,19 @@ func NewBgExecutor(fn func(context.Context, ...unsafe.Pointer), mutx ...sync.Loc
 	}
 }
 
-func (this *BgExecutor) Exec(ctx context.Context, uptr ...unsafe.Pointer) context.CancelFunc {
+func (this *BgExecutor) Exec(ctx context.Context, ch chan struct{}, uptr ...unsafe.Pointer) context.CancelFunc {
 	var unit = &execUnit{
 		uptr: uptr,
 	}
 	unit.ctx, unit.cancel = context.WithCancel(ctx)
 
+	var n int32 = 1
 	cancel := func() {
 		unit.cancel()
+		if ch != nil && 1 == atomic.SwapInt32(&n, 0) {
+			close(ch)
+		}
+
 		this.Lock()
 		defer this.Unlock()
 
