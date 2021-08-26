@@ -3,7 +3,7 @@
 #include "funcdata.h"
 
 #ifdef GOARCH_amd64
-TEXT ·goid(SB), NOSPLIT, $0-8
+TEXT ·goid2(SB), NOSPLIT, $0-8
     MOVQ (TLS), AX
     MOVQ ·offset(SB), BX
     MOVQ (AX)(BX*1), AX
@@ -25,16 +25,20 @@ TEXT ·getg_it(SB), NOSPLIT, $FOUR-TWO
     MOVQ $0, ret_data+ONE(FP)
     GO_RESULTS_INITIALIZED
 
-    MOVQ (TLS), AX
-    MOVQ $type·runtime·g(SB), BX
+    MOVQ (TLS), BX
+    MOVQ $type·runtime·g(SB), AX
 
-    MOVQ AX, ONE(SP)
-    MOVQ BX, 0(SP)
+    MOVQ BX, ONE(SP)
+    MOVQ AX, 0(SP)
     CALL runtime·convT2E(SB)
+
+    CMPB ·newabi(SB), $0
+    JNE LABEL
 
     MOVQ TWO(SP), AX
     MOVQ THREE(SP), BX
 
+LABEL:
     MOVQ AX, ret+0(FP)
     MOVQ BX, ret+ONE(FP)
     RET
@@ -58,16 +62,20 @@ TEXT ·getg_it(SB), NOSPLIT, $FOUR-TWO
     MOVQ $0, ret_data+ONE(FP)
     GO_RESULTS_INITIALIZED
 
-    MOVQ (TLS), AX
-    MOVQ $type·runtime·g(SB), BX
+    MOVQ (TLS), BX
+    MOVQ $type·runtime·g(SB), AX
 
-    MOVQ AX, ONE(SP)
-    MOVQ BX, 0(SP)
+    MOVQ BX, ONE(SP)
+    MOVQ AX, 0(SP)
     CALL runtime·convT2E(SB)
+
+    CMPB ·newabi(SB), $0
+    JNE LABEL
 
     MOVQ TWO(SP), AX
     MOVQ THREE(SP), BX
 
+LABEL:
     MOVQ AX, ret+0(FP)
     MOVQ BX, ret+ONE(FP)
     RET
