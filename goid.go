@@ -1,25 +1,39 @@
+// +build 386, amd64
+
 package goc
 
 import (
 	"reflect"
 	"runtime"
+	"strings"
 	"sync"
 	"unsafe"
 )
 
+//go:linkname __a runtime.convT2E
+func __a()
 func getg() unsafe.Pointer
 func getg_it() interface{}
 
-func goidImpl() func() int64 {
+var newabi = func() bool {
+	var newabi = false
+	v := runtime.Version()[2:]
+	vs := strings.Split(v, ".")
+	if vs[0] > "1" || vs[1] > "16" {
+		newabi = true
+	}
+	return newabi
+}()
+
+func goid() int64 {
 	var once sync.Once
 	var offset int64 = -1
 	var fn func() int64
+
 	once.Do(func() {
-		if runtime.GOARCH == "386" || runtime.GOARCH == "amd64" {
-			it := getg_it()
-			if f, ok := reflect.TypeOf(it).FieldByName("goid"); ok {
-				offset = int64(f.Offset)
-			}
+		it := getg_it()
+		if f, ok := reflect.TypeOf(it).FieldByName("goid"); ok {
+			offset = int64(f.Offset)
 		}
 
 		fn = func() int64 {
@@ -29,10 +43,5 @@ func goidImpl() func() int64 {
 			return *(*int64)(unsafe.Pointer(uintptr(getg()) + uintptr(offset)))
 		}
 	})
-	return fn
-}
-
-func Goid() int64 {
-	fn := goidImpl()
 	return fn()
 }
